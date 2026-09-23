@@ -32,16 +32,32 @@ export function SessionSummary({ session, history, onNewSession }: SessionSummar
               <dd>{formatClock(session.tooCloseMs)}</dd>
             </div>
             <div className="metric">
-              <dt>Head forward</dt>
+              <dt>Chin forward</dt>
               <dd>{formatClock(session.headForwardMs)}</dd>
             </div>
             <div className="metric">
-              <dt>Collapsed</dt>
-              <dd>{formatClock(session.collapsedMs + session.headDroppedMs)}</dd>
+              <dt>Chin down</dt>
+              <dd>{formatClock(session.headDroppedMs)}</dd>
             </div>
             <div className="metric">
-              <dt>Lateral</dt>
-              <dd>{formatClock(session.leaningMs + session.shoulderAsymmetryMs + session.headTiltMs)}</dd>
+              <dt>Slouching</dt>
+              <dd>{formatClock(session.collapsedMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Side lean</dt>
+              <dd>{formatClock(session.leaningMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Uneven shoulders</dt>
+              <dd>{formatClock(session.shoulderAsymmetryMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Head tilted</dt>
+              <dd>{formatClock(session.headTiltMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>A few things</dt>
+              <dd>{formatClock(session.multipleMs)}</dd>
             </div>
             <div className="metric">
               <dt>Tracking lost</dt>

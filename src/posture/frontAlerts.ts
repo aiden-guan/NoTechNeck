@@ -5,19 +5,19 @@ export function frontAlertCopy(state: PostureState, cameraOnScreen: boolean): st
     case 'TOO_CLOSE':
       return cameraOnScreen ? "You're moving closer to the screen." : "You're moving closer to the camera."
     case 'HEAD_FORWARD':
-      return 'Your head has been drifting toward the screen.'
+      return 'Your chin has been moving toward the screen.'
     case 'HEAD_DROPPED':
-      return 'Your head position has dropped from your calibrated posture.'
+      return "You've been tucking your chin down."
     case 'COLLAPSED':
-      return 'Your posture has dropped from your calibrated position.'
+      return "You've been slouching from your calibrated posture."
     case 'LEANING_SIDEWAYS':
-      return 'Your posture has been leaning to one side.'
+      return "You've been leaning to one side."
     case 'SHOULDER_ASYMMETRY':
-      return 'Your shoulders have been uneven compared with your calibrated posture.'
+      return 'One shoulder has been higher than the other.'
     case 'HEAD_TILT':
-      return 'Your head has been tilted from your calibrated posture.'
+      return 'Your head has been tilted to one side.'
     case 'MULTIPLE':
-      return 'Your posture has drifted from your calibrated position.'
+      return 'A few things are off from your calibrated posture.'
     default:
       return 'Try returning to your calibrated posture.'
   }
