@@ -3,6 +3,7 @@ dist
 .DS_Store
 *.local
 .vite
+.vercel
 coverage
 public/mediapipe
 public/models
