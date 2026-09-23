@@ -9,7 +9,18 @@ export type PoorKind =
   | 'TORSO_SLOUCH'
   | 'FORWARD_HEAD_AND_SLOUCH'
 
-export type PostureState = 'GOOD' | 'DRIFTING' | PoorKind | 'TRACKING_LOST' | 'UNKNOWN'
+/** Front-camera states. These are not side-view neck or torso angles. */
+export type FrontPoorKind =
+  | 'TOO_CLOSE'
+  | 'HEAD_FORWARD'
+  | 'HEAD_DROPPED'
+  | 'LEANING_SIDEWAYS'
+  | 'SHOULDER_ASYMMETRY'
+  | 'HEAD_TILT'
+  | 'COLLAPSED'
+  | 'MULTIPLE'
+
+export type PostureState = 'GOOD' | 'DRIFTING' | PoorKind | FrontPoorKind | 'TRACKING_LOST' | 'UNKNOWN'
 
 export type InstantPosture = 'GOOD' | PoorKind | 'UNKNOWN'
 
@@ -73,6 +84,23 @@ export function isPoorState(state: PostureState): state is PoorKind {
     state === 'TORSO_SLOUCH' ||
     state === 'FORWARD_HEAD_AND_SLOUCH'
   )
+}
+
+export function isFrontPoorState(state: PostureState): state is FrontPoorKind {
+  return (
+    state === 'TOO_CLOSE' ||
+    state === 'HEAD_FORWARD' ||
+    state === 'HEAD_DROPPED' ||
+    state === 'LEANING_SIDEWAYS' ||
+    state === 'SHOULDER_ASYMMETRY' ||
+    state === 'HEAD_TILT' ||
+    state === 'COLLAPSED' ||
+    state === 'MULTIPLE'
+  )
+}
+
+export function isAnyPoorState(state: PostureState): boolean {
+  return isPoorState(state) || isFrontPoorState(state)
 }
 
 export interface DatasetLabelled {

@@ -1,20 +1,31 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import type { UserSettings } from '../config/postureConfig'
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react'
+import type { AnalysisMode, UserSettings } from '../config/postureConfig'
 import type { DatasetLabel } from '../posture/postureTypes'
+import type { FrontDatasetLabel } from '../posture/frontTypes'
 import type { OverlayModel } from '../engine/postureEngine'
 import { PostureEngine } from '../engine/postureEngine'
+import type { FrontEngineView, FrontOverlayModel } from '../engine/frontPostureEngine'
+import { FrontPostureEngine } from '../engine/frontPostureEngine'
 import {
-  clearActiveSession,
-  clearBaseline,
-  loadActiveSession,
-  loadBaseline,
+  clearFrontBaseline,
+  clearFrontSession,
+  clearSideBaseline,
+  clearSideSession,
   loadDataset,
+  loadFrontBaseline,
+  loadFrontDataset,
+  loadFrontSession,
   loadSettings,
+  loadSideBaseline,
+  loadSideSession,
   pushSessionHistory,
-  saveActiveSession,
-  saveBaseline,
   saveDataset,
+  saveFrontBaseline,
+  saveFrontDataset,
+  saveFrontSession,
   saveSettings,
+  saveSideBaseline,
+  saveSideSession,
 } from '../analytics/storage'
 import { anchorBaseline } from '../posture/imageAnchor'
 import { sampleObservation } from '../posture/imageSample'
@@ -22,6 +33,27 @@ import { detectStillImage } from '../cv/poseDetector'
 import { playChime } from '../ui/notify'
 import { useCamera } from './useCamera'
 import { usePoseDetection } from './usePoseDetection'
+import { useFrontDetection } from './useFrontDetection'
+
+type FrameModel = OverlayModel | FrontOverlayModel
+
+export interface MonitorActions {
+  startCalibration: (options?: { knownDistanceCm: number | null }) => string | null
+  cancelCalibration: () => void
+  beginPositioning: () => void
+  endSession: () => void
+  startNewSession: () => void
+  dismissAlert: () => void
+  dismissRecalibration: () => void
+  updateSettings: (partial: Partial<UserSettings>) => void
+  setRecording: (recording: boolean, label: DatasetLabel | FrontDatasetLabel | '') => void
+  clearDataset: () => void
+  exportDataset: (format: 'csv' | 'json') => string
+  clearCalibration: () => void
+  calibrateFromPhotos: (files: File[]) => Promise<string | null>
+  retryVision: () => void
+  setMode: (mode: AnalysisMode) => void
+}
 
 function initialSettings(): UserSettings {
   const settings = loadSettings()
@@ -32,28 +64,40 @@ function initialSettings(): UserSettings {
 }
 
 export function usePostureMonitor() {
-  const engineRef = useRef<PostureEngine | null>(null)
   const pendingAnchorSave = useRef(false)
-  if (!engineRef.current) {
+  const sideRef = useRef<PostureEngine | null>(null)
+  const frontRef = useRef<FrontPostureEngine | null>(null)
+  if (!sideRef.current || !frontRef.current) {
     const settings = initialSettings()
-    const stored = loadBaseline()
+    const stored = loadSideBaseline()
     const baseline = stored ? anchorBaseline(stored) : null
     pendingAnchorSave.current = !!stored && !stored.imagePrior && !!baseline
-    engineRef.current = new PostureEngine({
+    sideRef.current = new PostureEngine({
       settings,
       baseline,
-      session: loadActiveSession(),
+      session: loadSideSession(),
       dataset: loadDataset(),
     })
+    frontRef.current = new FrontPostureEngine({
+      settings,
+      baseline: loadFrontBaseline(),
+      session: loadFrontSession(),
+      dataset: loadFrontDataset(),
+    })
   }
-  const engine = engineRef.current
-  const frameRef = useRef<OverlayModel | null>(null)
-  const [view, setView] = useState(() => engine.currentView())
-  const [poseAttempt, setPoseAttempt] = useState(0)
-  const publish = useMemo(() => {
+  const side = sideRef.current
+  const front = frontRef.current
+  const modeRef = useRef<AnalysisMode>(side.settings.analysisMode)
+  const frameRef = useRef<FrameModel | null>(null)
+  const [mode, setMode] = useState<AnalysisMode>(modeRef.current)
+  const [sideView, setSideView] = useState(() => side.currentView())
+  const [frontView, setFrontView] = useState(() => front.currentView())
+  const [attempt, setAttempt] = useState(0)
+
+  const publishSide = useMemo(() => {
     const stamp = { at: 0, posture: '', phase: '', alert: 0 }
     return (next: ReturnType<PostureEngine['currentView']>, force = false) => {
-      frameRef.current = next.overlay
+      if (modeRef.current === 'side') frameRef.current = next.overlay
       const now = performance.now()
       const changed =
         next.posture !== stamp.posture ||
@@ -65,40 +109,85 @@ export function usePostureMonitor() {
       stamp.posture = next.posture
       stamp.phase = next.phase
       stamp.alert = next.alert?.at ?? 0
-      setView(next)
+      setSideView(next)
     }
   }, [])
-  const camera = useCamera(view.settings.cameraDeviceId)
+  const publishFront = useMemo(() => {
+    const stamp = { at: 0, posture: '', phase: '', alert: 0 }
+    return (next: FrontEngineView, force = false) => {
+      if (modeRef.current === 'front') frameRef.current = next.overlay
+      const now = performance.now()
+      const changed =
+        next.posture !== stamp.posture ||
+        next.phase !== stamp.phase ||
+        (next.alert?.at ?? 0) !== stamp.alert ||
+        next.calibration?.failed === true ||
+        next.scoreable !== (stamp as { scoreable?: boolean }).scoreable
+      if (!force && !changed && now - stamp.at < 100) return
+      stamp.at = now
+      stamp.posture = next.posture
+      stamp.phase = next.phase
+      stamp.alert = next.alert?.at ?? 0
+      ;(stamp as { scoreable?: boolean }).scoreable = next.scoreable
+      setFrontView(next)
+    }
+  }, [])
+
+  const activeSettings = mode === 'front' ? frontView.settings : sideView.settings
+  const camera = useCamera(activeSettings.cameraDeviceId)
   const pose = usePoseDetection(
     camera.video,
-    camera.status === 'ready',
+    mode === 'side' && camera.status === 'ready',
     (observation, timestamp, inferenceMs) => {
-      publish(engine.ingest(observation, timestamp, inferenceMs))
+      publishSide(side.ingest(observation, timestamp, inferenceMs))
     },
-    poseAttempt,
+    attempt,
+  )
+  const frontVision = useFrontDetection(
+    camera.video,
+    mode === 'front' && camera.status === 'ready',
+    activeSettings.debugEnabled,
+    (update) => {
+      publishFront(front.ingest(update, Date.now(), { faceMs: update.faceMs, poseMs: update.poseMs }))
+    },
+    attempt,
   )
 
-  const savedRevision = useRef(engine.baselineRevision)
+  const sideSaved = useRef(side.baselineRevision)
+  const frontSaved = useRef(front.baselineRevision)
   const notifiedAlert = useRef(0)
 
   useEffect(() => {
     if (!pendingAnchorSave.current) return
     pendingAnchorSave.current = false
-    if (engine.baseline) saveBaseline(engine.baseline)
-  }, [engine])
+    if (side.baseline) saveSideBaseline(side.baseline)
+  }, [side])
 
   useEffect(() => {
-    if (view.baselineRevision === savedRevision.current) return
-    savedRevision.current = view.baselineRevision
-    if (view.baseline) saveBaseline(view.baseline)
-    else clearBaseline()
-  }, [view.baseline, view.baselineRevision])
+    if (sideView.baselineRevision === sideSaved.current) return
+    sideSaved.current = sideView.baselineRevision
+    if (sideView.baseline) saveSideBaseline(sideView.baseline)
+    else clearSideBaseline()
+  }, [sideView.baseline, sideView.baselineRevision])
 
   useEffect(() => {
-    if (view.phase !== 'monitoring') return
+    if (frontView.baselineRevision === frontSaved.current) return
+    frontSaved.current = frontView.baselineRevision
+    if (frontView.baseline) saveFrontBaseline(frontView.baseline)
+    else clearFrontBaseline()
+  }, [frontView.baseline, frontView.baselineRevision])
+
+  const phase = mode === 'front' ? frontView.phase : sideView.phase
+  useEffect(() => {
+    if (phase !== 'monitoring') return
     const save = () => {
-      saveActiveSession(engine.currentView().session)
-      if (engine.recording) saveDataset(engine.getDataset())
+      if (modeRef.current === 'front') {
+        saveFrontSession(front.currentView().session)
+        if (front.recording) saveFrontDataset(front.getDataset())
+      } else {
+        saveSideSession(side.currentView().session)
+        if (side.recording) saveDataset(side.getDataset())
+      }
     }
     save()
     const id = window.setInterval(save, 15000)
@@ -110,64 +199,107 @@ export function usePostureMonitor() {
       window.clearInterval(id)
       document.removeEventListener('visibilitychange', onHide)
     }
-  }, [engine, view.phase])
+  }, [front, phase, side])
 
+  const alert = mode === 'front' ? frontView.alert : sideView.alert
+  const audio = activeSettings.audioEnabled
+  const browserNotifications = activeSettings.browserNotificationsEnabled
   useEffect(() => {
-    const alert = view.alert
     if (!alert || alert.at === notifiedAlert.current) return
     notifiedAlert.current = alert.at
-    if (view.settings.audioEnabled) playChime()
-    if (
-      view.settings.browserNotificationsEnabled &&
-      typeof Notification !== 'undefined' &&
-      Notification.permission === 'granted'
-    ) {
+    if (audio) playChime()
+    if (browserNotifications && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
       new Notification('NoTechNeck', { body: alert.message })
     }
     const id = window.setTimeout(() => {
-      if (engine.currentView().alert?.at === alert.at) publish(engine.dismissAlert(), true)
+      const current = modeRef.current === 'front' ? front.currentView().alert : side.currentView().alert
+      if (current?.at !== alert.at) return
+      if (modeRef.current === 'front') publishFront(front.dismissAlert(), true)
+      else publishSide(side.dismissAlert(), true)
     }, 8000)
     return () => window.clearTimeout(id)
-  }, [engine, publish, view.alert, view.settings.audioEnabled, view.settings.browserNotificationsEnabled])
+  }, [alert, audio, browserNotifications, front, publishFront, publishSide, side])
 
-  const actions = useMemo(
-    () => ({
-      startCalibration: () => {
-        const result = engine.startCalibration(Date.now())
-        publish(result.view, true)
+  const actions = useMemo<MonitorActions>(() => {
+    const syncSettings = (next: UserSettings) => {
+      saveSettings(next)
+      publishSide(side.updateSettings(next), true)
+      publishFront(front.updateSettings(next), true)
+    }
+    return {
+      startCalibration: (options) => {
+        if (modeRef.current === 'front') {
+          const result = front.startCalibration(Date.now(), options)
+          publishFront(result.view, true)
+          return result.error
+        }
+        const result = side.startCalibration(Date.now())
+        publishSide(result.view, true)
         return result.error
       },
-      cancelCalibration: () => publish(engine.cancelCalibration(), true),
-      beginPositioning: () => publish(engine.beginPositioning(), true),
+      cancelCalibration: () => {
+        if (modeRef.current === 'front') publishFront(front.cancelCalibration(), true)
+        else publishSide(side.cancelCalibration(), true)
+      },
+      beginPositioning: () => {
+        if (modeRef.current === 'front') publishFront(front.beginPositioning(), true)
+        else publishSide(side.beginPositioning(), true)
+      },
       endSession: () => {
-        const next = engine.endSession(Date.now())
+        if (modeRef.current === 'front') {
+          const next = front.endSession(Date.now())
+          if (next.session.endedAt) {
+            pushSessionHistory(next.session)
+            clearFrontSession()
+          }
+          publishFront(next, true)
+          return
+        }
+        const next = side.endSession(Date.now())
         if (next.session.endedAt) {
           pushSessionHistory(next.session)
-          clearActiveSession()
+          clearSideSession()
         }
-        publish(next, true)
+        publishSide(next, true)
       },
-      startNewSession: () => publish(engine.startNewSession(Date.now()), true),
-      dismissAlert: () => publish(engine.dismissAlert(), true),
-      dismissRecalibration: () => publish(engine.dismissRecalibration(), true),
-      updateSettings: (partial: Partial<UserSettings>) => {
-        const next = { ...engine.settings, ...partial }
-        saveSettings(next)
-        publish(engine.updateSettings(next), true)
+      startNewSession: () => {
+        if (modeRef.current === 'front') publishFront(front.startNewSession(Date.now()), true)
+        else publishSide(side.startNewSession(Date.now()), true)
       },
-      setRecording: (recording: boolean, label: DatasetLabel | '') => {
-        publish(engine.setRecording(recording, label), true)
-        if (!recording) saveDataset(engine.getDataset())
+      dismissAlert: () => {
+        if (modeRef.current === 'front') publishFront(front.dismissAlert(), true)
+        else publishSide(side.dismissAlert(), true)
+      },
+      dismissRecalibration: () => publishSide(side.dismissRecalibration(), true),
+      updateSettings: (partial) => {
+        syncSettings({ ...side.settings, ...front.settings, ...partial })
+      },
+      setRecording: (recording, label) => {
+        if (modeRef.current === 'front') {
+          publishFront(front.setRecording(recording, label as FrontDatasetLabel | ''), true)
+          if (!recording) saveFrontDataset(front.getDataset())
+          return
+        }
+        publishSide(side.setRecording(recording, label as DatasetLabel | ''), true)
+        if (!recording) saveDataset(side.getDataset())
       },
       clearDataset: () => {
-        publish(engine.clearDataset(), true)
+        if (modeRef.current === 'front') {
+          publishFront(front.clearDataset(), true)
+          saveFrontDataset([])
+          return
+        }
+        publishSide(side.clearDataset(), true)
         saveDataset([])
       },
-      exportDataset: (format: 'csv' | 'json') => engine.exportDataset(format),
+      exportDataset: (format) =>
+        modeRef.current === 'front' ? front.exportDataset(format) : side.exportDataset(format),
       clearCalibration: () => {
-        publish(engine.clearCalibration(), true)
+        if (modeRef.current === 'front') publishFront(front.clearCalibration(), true)
+        else publishSide(side.clearCalibration(), true)
       },
-      calibrateFromPhotos: async (files: File[]) => {
+      calibrateFromPhotos: async (files) => {
+        if (modeRef.current !== 'side') return 'Photo calibration is part of Side analysis.'
         const samples = []
         for (const file of files) {
           try {
@@ -183,16 +315,35 @@ export function usePostureMonitor() {
         if (samples.length === 0) {
           return 'None of those photos showed a side view with the head, shoulder, and hip in frame.'
         }
-        const result = engine.importSamples(samples, Date.now())
-        publish(result.view, true)
+        const result = side.importSamples(samples, Date.now())
+        publishSide(result.view, true)
         return result.error
       },
-      retryPose: () => setPoseAttempt((value) => value + 1),
-    }),
-    [engine, publish],
-  )
+      retryVision: () => setAttempt((value) => value + 1),
+      setMode: (next) => {
+        if (next === modeRef.current) return
+        if (modeRef.current === 'front') front.resetTransient()
+        else side.resetTransient()
+        const entering = next === 'front' ? front : side
+        entering.resetTransient()
+        const settings = { ...side.settings, ...front.settings, analysisMode: next }
+        frameRef.current = null
+        modeRef.current = next
+        syncSettings(settings)
+        setMode(next)
+      },
+    }
+  }, [front, publishFront, publishSide, side])
 
-  return { view, frameRef, camera, pose, actions }
+  const vision =
+    mode === 'front'
+      ? { status: frontVision.status, error: frontVision.error }
+      : { status: pose.status, error: pose.error }
+
+  if (mode === 'front') {
+    return { mode, view: frontView, frameRef: frameRef as RefObject<FrontOverlayModel | null>, camera, vision, actions }
+  }
+  return { mode, view: sideView, frameRef: frameRef as RefObject<OverlayModel | null>, camera, vision, actions }
 }
 
 function fileToImage(file: File): Promise<HTMLImageElement> {

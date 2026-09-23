@@ -1,13 +1,15 @@
 import type { PostureConfig } from '../config/postureConfig'
-import type { PoorKind, PostureState, TrackingQuality } from './postureTypes'
-import { isPoorState } from './postureTypes'
+import type { FrontPoorKind, PoorKind, PostureState, TrackingQuality } from './postureTypes'
+import { isAnyPoorState } from './postureTypes'
 import { alertCopy } from './alerts'
+
+type AnyPoorKind = PoorKind | FrontPoorKind
 
 export interface MachineInput {
   now: number
   tracking: TrackingQuality
   severity: 'none' | 'mild' | 'poor'
-  kind: PoorKind | null
+  kind: AnyPoorKind | null
   alertsEnabled: boolean
   sustainedAlertDelayMs: number
   alertCooldownMs: number
@@ -35,15 +37,18 @@ export class PostureStateMachine {
   private deviationStartedAt: number | null = null
   private recoveryStartedAt: number | null = null
   private trackingDegradedAt: number | null = null
-  private displayedKind: PoorKind | null = null
-  private pendingKind: PoorKind | null = null
+  private displayedKind: AnyPoorKind | null = null
+  private pendingKind: AnyPoorKind | null = null
   private pendingKindSince: number | null = null
   private phaseEnteredAt = 0
   private episodeAlerted = false
   private lastAlertAt: number | null = null
   private sustainedCounted = false
 
-  constructor(private readonly config: MachineConfig) {}
+  constructor(
+    private readonly config: MachineConfig,
+    private readonly alerts: (state: PostureState) => string = alertCopy,
+  ) {}
 
   reset(): void {
     this.phase = 'UNKNOWN'
@@ -95,7 +100,7 @@ export class PostureStateMachine {
     const elapsed = input.now - this.deviationStartedAt
 
     if (input.severity === 'mild') {
-      if (isPoorState(this.phase) || elapsed >= this.config.driftDelayMs) {
+      if (isAnyPoorState(this.phase) || elapsed >= this.config.driftDelayMs) {
         this.setPhase('DRIFTING', input.now)
       } else if (this.phase === 'UNKNOWN' || this.phase === 'TRACKING_LOST') {
         this.setPhase('GOOD', input.now)
@@ -132,7 +137,7 @@ export class PostureStateMachine {
   }
 
   private maybeAlert(input: MachineInput, elapsed: number): MachineResult {
-    if (!isPoorState(this.phase) || elapsed < input.sustainedAlertDelayMs) {
+    if (!isAnyPoorState(this.phase) || elapsed < input.sustainedAlertDelayMs) {
       return this.result(input.now, null, false)
     }
     let crossedSustained = false
@@ -144,12 +149,12 @@ export class PostureStateMachine {
     if (input.alertsEnabled && !this.episodeAlerted && cooled) {
       this.episodeAlerted = true
       this.lastAlertAt = input.now
-      return this.result(input.now, alertCopy(this.phase), crossedSustained)
+      return this.result(input.now, this.alerts(this.phase), crossedSustained)
     }
     return this.result(input.now, null, crossedSustained)
   }
 
-  private noteKind(kind: PoorKind, now: number): void {
+  private noteKind(kind: AnyPoorKind, now: number): void {
     if (kind === this.displayedKind) {
       this.pendingKind = kind
       this.pendingKindSince = now
@@ -166,7 +171,7 @@ export class PostureStateMachine {
   }
 
   private committed(): boolean {
-    return this.phase === 'DRIFTING' || isPoorState(this.phase)
+    return this.phase === 'DRIFTING' || isAnyPoorState(this.phase)
   }
 
   private clearEpisode(): void {

@@ -1,5 +1,28 @@
 import type { DatasetLabel } from '../posture/postureTypes'
 
+export type AnalysisMode = 'front' | 'side'
+
+/**
+ * Timers shared by the front and side monitors.
+ * A short movement stays upright; a poor pattern must persist before it is named or alerted.
+ */
+export const SHARED_TIMING_CONFIG = {
+  calibrationDurationMs: 5000,
+  calibrationMinSamples: 12,
+  calibrationOutlierMadK: 3.5,
+  driftDelayMs: 2000,
+  poorPostureDelayMs: 5000,
+  sustainedAlertDelayMs: 20000,
+  recoveryDelayMs: 1800,
+  trackingHoldMs: 900,
+  kindStableMs: 700,
+  alertCooldownMs: 180000,
+  maxFrameGapMs: 750,
+  historyIntervalMs: 8000,
+  datasetIntervalMs: 100,
+  positioningStableMs: 400,
+} as const
+
 export interface PostureConfig {
   inferenceFps: number
   landmarkConfidenceThreshold: number
@@ -64,6 +87,7 @@ export interface PostureConfig {
  * Landmark smoothing alpha 0.35 settles about 95% in ~7 frames (~0.5s at 15 fps).
  */
 export const POSTURE_CONFIG: PostureConfig = {
+  ...SHARED_TIMING_CONFIG,
   inferenceFps: 15,
   landmarkConfidenceThreshold: 0.55,
   landmarkRejectThreshold: 0.35,
@@ -75,9 +99,6 @@ export const POSTURE_CONFIG: PostureConfig = {
   oneEuroMinCutoff: 1.1,
   oneEuroBeta: 0.04,
   oneEuroDCutoff: 1,
-  calibrationDurationMs: 5000,
-  calibrationMinSamples: 12,
-  calibrationOutlierMadK: 3.5,
   sideSwitchMargin: 0.18,
   sideSwitchFrames: 8,
   facingDeadzone: 0.015,
@@ -102,23 +123,15 @@ export const POSTURE_CONFIG: PostureConfig = {
   weightNeck: 0.24,
   weightTorso: 0.26,
   weightPitch: 0.12,
-  driftDelayMs: 2000,
-  poorPostureDelayMs: 5000,
-  sustainedAlertDelayMs: 20000,
-  recoveryDelayMs: 1800,
-  trackingHoldMs: 900,
-  kindStableMs: 700,
-  alertCooldownMs: 180000,
-  maxFrameGapMs: 750,
-  historyIntervalMs: 8000,
-  datasetIntervalMs: 100,
   placementScaleMin: 0.55,
   placementScaleMax: 1.85,
   placementHoldMs: 4000,
-  positioningStableMs: 400,
   ghostScaleMin: 0.5,
   ghostScaleMax: 2,
 }
+
+/** Side-view thresholds. Front mode uses `FRONT_POSTURE_CONFIG` instead. */
+export const SIDE_POSTURE_CONFIG = POSTURE_CONFIG
 
 export interface UserSettings {
   alertsEnabled: boolean
@@ -130,6 +143,10 @@ export interface UserSettings {
   debugEnabled: boolean
   cameraDeviceId: string | null
   recordLandmarks: boolean
+  /** Front is the default daily monitor. Side keeps the sagittal analysis path. */
+  analysisMode: AnalysisMode
+  /** True when this webcam is built into or mounted on the screen being used. */
+  cameraOnScreen: boolean
 }
 
 export const DEFAULT_SETTINGS: UserSettings = {
@@ -142,6 +159,8 @@ export const DEFAULT_SETTINGS: UserSettings = {
   debugEnabled: false,
   cameraDeviceId: null,
   recordLandmarks: false,
+  analysisMode: 'front',
+  cameraOnScreen: true,
 }
 
 export const ALERT_DELAY_OPTIONS = [15000, 20000, 30000, 45000, 60000] as const

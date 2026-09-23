@@ -14,6 +14,7 @@ interface CameraViewProps {
   progress: number | null
   signal: string | null
   overlay: ReactNode
+  modelLabel?: string
 }
 
 export function CameraView({
@@ -28,6 +29,7 @@ export function CameraView({
   progress,
   signal,
   overlay,
+  modelLabel = 'Pose model',
 }: CameraViewProps) {
   const showPoseIssue = status === 'ready' && (poseStatus === 'loading' || poseStatus === 'error')
   return (
@@ -54,8 +56,8 @@ export function CameraView({
       )}
       {showPoseIssue && (
         <div className="finder-message finder-message-quiet">
-          <p className="kicker">Pose model</p>
-          <h2>{poseStatus === 'loading' ? 'Loading the local pose model' : 'Pose model unavailable'}</h2>
+          <p className="kicker">{modelLabel}</p>
+          <h2>{poseStatus === 'loading' ? `Loading the local ${modelLabel.toLowerCase()}` : `${modelLabel} unavailable`}</h2>
           {poseError && <p>{poseError}</p>}
           {poseStatus === 'error' && (
             <button className="button secondary" type="button" onClick={onRetryPose}>

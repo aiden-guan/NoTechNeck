@@ -4,19 +4,27 @@ interface CalibrationFlowProps {
   calibration: CalibrationProgress
   onCancel: () => void
   onRetry: () => void
+  title?: string
+  holding?: string
 }
 
-export function CalibrationFlow({ calibration, onCancel, onRetry }: CalibrationFlowProps) {
+export function CalibrationFlow({
+  calibration,
+  onCancel,
+  onRetry,
+  title = 'Stay upright',
+  holding = 'Capturing your working posture.',
+}: CalibrationFlowProps) {
   const secondsLeft = Math.max(0, Math.ceil((calibration.durationMs - calibration.elapsedMs) / 1000))
   return (
     <section className="panel" aria-labelledby="capture-title">
       <p className="kicker">Baseline</p>
-      <h2 id="capture-title">{calibration.failed ? 'Hold was not stable' : 'Stay upright'}</h2>
+      <h2 id="capture-title">{calibration.failed ? 'Hold was not stable' : title}</h2>
       {calibration.failed ? (
         <p className="guidance">{calibration.message}</p>
       ) : (
         <p className="guidance">
-          Capturing your working posture. {secondsLeft === 0 ? 'Finishing.' : `${secondsLeft}s left.`}
+          {holding} {secondsLeft === 0 ? 'Finishing.' : `${secondsLeft}s left.`}
         </p>
       )}
       <p className="sample-count">

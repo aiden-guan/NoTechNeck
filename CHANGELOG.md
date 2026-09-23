@@ -1,5 +1,49 @@
 # Changelog
 
+## 1.1.0 — 2026-09-22
+
+### Summary
+
+Front Monitor is now the default posture experience: a laptop or monitor webcam estimates calibrated distance, head pose, and shoulder alignment. The existing side-view system remains a separate analysis mode with its own baseline.
+
+### Architectural & Functional Highlights
+
+| Component / Layer | Change | Impact |
+| :--- | :--- | :--- |
+| **Front engine** | `FrontPostureEngine` beside the existing side `PostureEngine` | Mode switches do not mix calibrations or tracking state |
+| **Dual inference** | Local Face Landmarker and Pose Landmarker on one scheduler | Face and pose do not run on the same tick |
+| **Distance** | Apparent face scale versus the personal baseline, optional one-time centimeter entry | Centimeters appear only after the user measures a baseline distance |
+| **Head advance** | Face scale divided by shoulder scale | Whole-body movement changes distance; head-only movement can become head forward |
+
+### Detailed Changes
+
+#### Added
+
+- **Front monitor**: Default mode for a screen-facing webcam, with its own five-second baseline, overlay, metrics, alerts, and session totals.
+- **Mode switch**: Front and Side in the header. The choice is stored locally.
+- **Distance**: Relative distance from face scale. Optional cm/in entry converts later scale changes. Off-screen cameras are labeled camera distance.
+- **Head pose**: Pitch, yaw, and roll from the facial transformation matrix, compared with the calibrated working orientation.
+- **Front states**: Too close, head forward, head dropped, collapsed, leaning, shoulder asymmetry, head tilt, and combined change, after the existing persistence delays.
+- **Debug and dataset**: Front latency, scales, and labeled rows tagged `mode: front`.
+
+#### Changed / Refactored
+
+- **Side path**: Kept. An existing `notechneck.baseline.v1` migrates to the side baseline and is not read as front calibration.
+- **Sessions**: Side totals stay. Front sessions record their own poor-posture buckets and distance stats.
+- **Product framing**: The header reads “Posture monitor” instead of “Side-view posture.”
+
+#### Documentation & Presentation
+
+- **README**: Front monitor is the main explanation, including what a frontal camera cannot measure.
+- **Future model**: Front feature columns are documented separately from the side tensor.
+
+### Verification Proof
+
+- `npm test` — 71 tests passed, including the existing side suite and new front cases for distance, head advance, collapse, asymmetry, lean, look-away, transient motion, and tracking loss.
+- `npm run typecheck` and `npm run lint` passed.
+- `npm run build` passed. The face landmarker downloaded into `public/models/` with the pose model.
+- Browser check: Front is the first screen, Side keeps the profile setup and photo calibration, the mode survives reload, and both local models load from the app origin.
+
 ## 1.0.0 — 2026-09-22
 
 ### Summary

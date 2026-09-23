@@ -167,6 +167,31 @@ export class PostureEngine {
     return this.snapshot()
   }
 
+  /** Drop live tracking. The side baseline and session totals stay put. */
+  resetTransient(): EngineView {
+    this.landmarksSmoother.reset()
+    this.featureSmoother.reset()
+    this.machine.reset()
+    this.machineResult = null
+    this.latch = emptyLatch()
+    this.smoothedBody = null
+    this.rawBody = null
+    this.features = null
+    this.deviation = null
+    this.score = null
+    this.instant = null
+    this.severity = 'none'
+    this.tracking = 'lost'
+    this.positioning = null
+    this.positioningReadySince = null
+    this.ghost = null
+    this.alert = null
+    this.calibration = null
+    if (this.phase === 'calibrating') this.phase = this.baseline ? 'monitoring' : 'positioning'
+    if (this.sessionLive && this.phase === 'monitoring') this.sessionTracker.pause(this.lastNow ?? Date.now())
+    return this.snapshot()
+  }
+
   beginPositioning(): EngineView {
     this.calibration = null
     this.phase = 'positioning'

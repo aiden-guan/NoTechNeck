@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { ALERT_COOLDOWN_OPTIONS, ALERT_DELAY_OPTIONS, type UserSettings } from '../config/postureConfig'
+import { ALERT_COOLDOWN_OPTIONS, ALERT_DELAY_OPTIONS, type AnalysisMode, type UserSettings } from '../config/postureConfig'
 import { formatClock } from '../ui/format'
 
 interface SettingsPanelProps {
@@ -11,6 +11,7 @@ interface SettingsPanelProps {
   onChange: (partial: Partial<UserSettings>) => void
   onNotifications: (enabled: boolean) => void
   onClearCalibration: () => void
+  mode: AnalysisMode
 }
 
 export function SettingsPanel({
@@ -22,6 +23,7 @@ export function SettingsPanel({
   onChange,
   onNotifications,
   onClearCalibration,
+  mode,
 }: SettingsPanelProps) {
   const closeRef = useRef<HTMLButtonElement>(null)
   useEffect(() => {
@@ -121,16 +123,30 @@ export function SettingsPanel({
             ))}
           </select>
         </label>
-        <label className="toggle">
-          <input
-            type="checkbox"
-            checked={settings.mirrorVideo}
-            onChange={(event) => onChange({ mirrorVideo: event.target.checked })}
-          />
-          Mirror preview
-        </label>
+        {mode === 'front' && (
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={settings.cameraOnScreen}
+              onChange={(event) => onChange({ cameraOnScreen: event.target.checked })}
+            />
+            Camera is on the screen I'm using
+          </label>
+        )}
+        {mode === 'side' && (
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={settings.mirrorVideo}
+              onChange={(event) => onChange({ mirrorVideo: event.target.checked })}
+            />
+            Mirror preview
+          </label>
+        )}
         <p className="guidance">
-          Measurements use the unmirrored camera image. Leave mirroring off for a side-view setup.
+          {mode === 'front'
+            ? 'The front preview is mirrored so movement matches you. Distance is screen distance only when the camera is on that screen.'
+            : 'Measurements use the unmirrored camera image. Leave mirroring off for a side-view setup.'}
         </p>
         <label className="toggle">
           <input
@@ -141,7 +157,7 @@ export function SettingsPanel({
           Developer readout
         </label>
         <button className="button secondary" type="button" onClick={onClearCalibration}>
-          Clear calibration
+          {mode === 'front' ? 'Clear front calibration' : 'Clear side calibration'}
         </button>
       </div>
     </div>

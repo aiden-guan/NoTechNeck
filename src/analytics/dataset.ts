@@ -1,6 +1,8 @@
+import type { FrontDatasetRow } from '../posture/frontTypes'
 import type { DatasetLabelled } from '../posture/postureTypes'
 
 const COLUMNS = [
+  'mode',
   'timestamp',
   'forwardHeadRatio',
   'neckAngle',
@@ -23,6 +25,7 @@ export function datasetToCsv(rows: readonly DatasetLabelled[]): string {
   const lines = [COLUMNS.join(',')]
   for (const row of rows) {
     const cells = [
+      'mode' in row && row.mode === 'front' ? 'front' : 'side',
       row.timestamp,
       row.forwardHeadRatio,
       row.neckAngle,
@@ -46,6 +49,68 @@ export function datasetToCsv(rows: readonly DatasetLabelled[]): string {
 }
 
 export function datasetToJson(rows: readonly DatasetLabelled[]): string {
+  return JSON.stringify(rows, null, 2)
+}
+
+const FRONT_COLUMNS = [
+  'mode',
+  'timestamp',
+  'faceScale',
+  'shoulderScale',
+  'relativeDistance',
+  'estimatedDistanceCm',
+  'headAdvanceRatio',
+  'headPitch',
+  'headYaw',
+  'headRoll',
+  'headLateralOffset',
+  'shoulderTilt',
+  'chinShoulderGap',
+  'headVerticalPosition',
+  'trackingConfidence',
+  'label',
+  'faceCenterX',
+  'faceCenterY',
+  'leftShoulderX',
+  'leftShoulderY',
+  'rightShoulderX',
+  'rightShoulderY',
+] as const
+
+export function frontDatasetToCsv(rows: readonly FrontDatasetRow[]): string {
+  const lines = [FRONT_COLUMNS.join(',')]
+  for (const row of rows) {
+    lines.push(
+      [
+        'front',
+        row.timestamp,
+        row.faceScale,
+        row.shoulderScale ?? '',
+        row.relativeDistance,
+        row.estimatedDistanceCm ?? '',
+        row.headAdvanceRatio ?? '',
+        row.headPitch ?? '',
+        row.headYaw ?? '',
+        row.headRoll ?? '',
+        row.headLateralOffset ?? '',
+        row.shoulderTilt ?? '',
+        row.chinShoulderGap ?? '',
+        row.headVerticalPosition ?? '',
+        row.trackingConfidence,
+        csvEscape(row.label),
+        row.faceCenterX ?? '',
+        row.faceCenterY ?? '',
+        row.leftShoulderX ?? '',
+        row.leftShoulderY ?? '',
+        row.rightShoulderX ?? '',
+        row.rightShoulderY ?? '',
+      ].join(','),
+    )
+  }
+  return lines.join('\n')
+}
+
+export function frontDatasetToJson(rows: readonly FrontDatasetRow[]): string {
   return JSON.stringify(rows, null, 2)
 }
 

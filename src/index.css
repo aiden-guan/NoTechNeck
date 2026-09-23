@@ -37,11 +37,48 @@ ul, ol { margin: 0; padding: 0; }
 }
 
 .topbar {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
   margin-bottom: 22px;
+}
+.topbar .top-meta { justify-self: end; }
+.mode-switch {
+  display: flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.mode-switch button {
+  border: 0;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+}
+.mode-switch button.is-selected {
+  background: var(--ink);
+  color: var(--paper);
+}
+.mode-caption {
+  color: var(--muted);
+  font-size: 14px;
+  max-width: 36ch;
+}
+.distance-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.distance-entry input {
+  width: 88px;
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-family: var(--mono);
 }
 
 .brand {
@@ -382,6 +419,8 @@ ul, ol { margin: 0; padding: 0; }
   .rail { position: static; }
   .state-word { font-size: 40px; }
   .app { padding: 16px; }
+  .topbar { grid-template-columns: 1fr auto; }
+  .mode-switch { grid-column: 1 / -1; grid-row: 2; justify-self: start; }
 }
 
 @media (prefers-reduced-motion: reduce) {

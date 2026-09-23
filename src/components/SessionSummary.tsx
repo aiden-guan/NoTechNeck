@@ -1,6 +1,7 @@
 import type { PostureSession } from '../analytics/sessionTracker'
 import { poorMs } from '../analytics/sessionTracker'
 import { formatClock, formatPercent, formatScore, formatWhen } from '../ui/format'
+import { formatDistanceRatio } from '../ui/frontFormat'
 
 interface SessionSummaryProps {
   session: PostureSession
@@ -24,22 +25,57 @@ export function SessionSummary({ session, history, onNewSession }: SessionSummar
           <dt>Poor posture</dt>
           <dd>{formatPercent(poor, session.totalTrackedMs)}</dd>
         </div>
-        <div className="metric">
-          <dt>Head forward</dt>
-          <dd>{formatClock(session.forwardHeadMs)}</dd>
-        </div>
-        <div className="metric">
-          <dt>Torso slouch</dt>
-          <dd>{formatClock(session.torsoSlouchMs)}</dd>
-        </div>
-        <div className="metric">
-          <dt>Head and torso</dt>
-          <dd>{formatClock(session.combinedMs)}</dd>
-        </div>
-        <div className="metric">
-          <dt>Looking down</dt>
-          <dd>{formatClock(session.lookingDownMs)}</dd>
-        </div>
+        {session.mode === 'front' ? (
+          <>
+            <div className="metric">
+              <dt>Too close</dt>
+              <dd>{formatClock(session.tooCloseMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Head forward</dt>
+              <dd>{formatClock(session.headForwardMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Collapsed</dt>
+              <dd>{formatClock(session.collapsedMs + session.headDroppedMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Lateral</dt>
+              <dd>{formatClock(session.leaningMs + session.shoulderAsymmetryMs + session.headTiltMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Tracking lost</dt>
+              <dd>{formatClock(session.lostMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Distance</dt>
+              <dd>{formatDistanceRatio(session.averageDistanceRatio)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Closest sustained</dt>
+              <dd>{formatDistanceRatio(session.closestDistanceRatio)}</dd>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="metric">
+              <dt>Head forward</dt>
+              <dd>{formatClock(session.forwardHeadMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Torso slouch</dt>
+              <dd>{formatClock(session.torsoSlouchMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Head and torso</dt>
+              <dd>{formatClock(session.combinedMs)}</dd>
+            </div>
+            <div className="metric">
+              <dt>Looking down</dt>
+              <dd>{formatClock(session.lookingDownMs)}</dd>
+            </div>
+          </>
+        )}
         <div className="metric">
           <dt>Longest episode</dt>
           <dd>{formatClock(session.longestPoorEpisodeMs)}</dd>

@@ -79,10 +79,21 @@ Do not block the posture monitor on object detection. If a later version can see
 - a rough viewing angle from the head pitch proxy and the screen’s position in the frame
 - whether the display sits below the calibrated eye line
 
-Those should be phrased as placement hints (“the display sits lower than your calibrated eye line”), not as centimeter measurements. This app has no intrinsic camera calibration, so distances in centimeters would be false precision.
+Those should be phrased as placement hints (“the display sits lower than your calibrated eye line”), not as clinical measurements. Front mode can show centimeters only after the user measures one baseline distance. MediaPipe Z is not that measurement.
 
 Possible future copy, only after the detector is actually reliable:
 
 > Your display may be positioned below your calibrated eye line.
 
-Until then, the side-view posture features above are the whole product.
+Front monitor is the daily path. Its rules live in `src/posture/frontClassifier.ts` and should stay rules-based until labeled front sequences exist. A later model can use the exported front columns:
+
+- `relativeDistance` and its trend
+- `headAdvanceRatio`
+- `headPitch`, `headYaw`, `headRoll`
+- `shoulderTilt` and `headLateralOffset`
+- `chinShoulderGap`, `headVerticalPosition`, and the collapse index's inputs
+- temporal derivatives of those series
+
+That model would still have to separate normal screen interaction, a temporary lean, reading closer, and a sustained pattern. The state machine should remain after any learned label. Do not train that network in the app.
+
+Side-view rows stay on their own schema (`mode: side`). Do not mix them into a front tensor. The side features above are still the sagittal path; they are no longer the only product.

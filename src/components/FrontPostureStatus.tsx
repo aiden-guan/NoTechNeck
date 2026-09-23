@@ -1,33 +1,30 @@
 import { useEffect, useState } from 'react'
-import type { EngineView } from '../engine/postureEngine'
 import { poorMs } from '../analytics/sessionTracker'
-import { isPoorState, type PostureState } from '../posture/postureTypes'
+import type { FrontEngineView } from '../engine/frontPostureEngine'
+import type { PostureState } from '../posture/postureTypes'
+import { isFrontPoorState } from '../posture/postureTypes'
+import { formatClock, formatDegrees, formatScore, postureLabel, trackingLabel } from '../ui/format'
 import {
-  formatClock,
-  formatDegrees,
-  formatScore,
-  formatTorsoPercent,
-  postureLabel,
-  trackingLabel,
-} from '../ui/format'
+  formatEstimatedDistance,
+  formatHeadAdvance,
+  formatRelativeDistance,
+  formatShoulderBalance,
+} from '../ui/frontFormat'
 import { MetricReadout } from './MetricReadout'
-import { PhotoButton } from './PositioningAssistant'
 
-interface PostureStatusProps {
-  view: EngineView
+interface FrontPostureStatusProps {
+  view: FrontEngineView
   onRecalibrate: () => void
   onEndSession: () => void
-  onPhotos: (files: File[]) => void
-  message?: string | null
 }
 
-export function PostureStatus({ view, onRecalibrate, onEndSession, onPhotos, message }: PostureStatusProps) {
+export function FrontPostureStatus({ view, onRecalibrate, onEndSession }: FrontPostureStatusProps) {
   const now = useNow(view.phase === 'monitoring')
   const wall = view.session.startedAt > 1_000_000_000_000 ? Math.max(0, now - view.session.startedAt) : 0
-  const deviation = view.deviation
+  const distance = distanceReadout(view)
   return (
     <section className="panel" data-tone={toneFor(view.posture)} aria-labelledby="posture-title">
-      <p className="kicker">Side analysis</p>
+      <p className="kicker">Front monitor</p>
       <h2 id="posture-title" className="state-word" key={view.posture}>
         {postureLabel(view.posture)}
       </h2>
@@ -42,31 +39,19 @@ export function PostureStatus({ view, onRecalibrate, onEndSession, onPhotos, mes
         </div>
       </div>
       <dl className="metrics">
-        <MetricReadout label="Forward head" value={formatTorsoPercent(deviation?.forwardHead)} detail="of torso" />
-        <MetricReadout label="Neck angle" value={formatDegrees(deviation?.neckAngle)} />
-        <MetricReadout label="Torso lean" value={formatDegrees(deviation?.torsoAngle)} />
-        <MetricReadout label="Gaze" value={formatDegrees(deviation?.headPitch)} />
+        <MetricReadout label={distance.label} value={distance.value} detail={distance.detail} />
+        <MetricReadout label="Head position" value={formatHeadAdvance(view.features?.headAdvanceRatio)} />
+        <MetricReadout label="Head pitch" value={formatDegrees(view.deviation?.pitch)} />
+        <MetricReadout label="Shoulders" value={formatShoulderBalance(view.deviation?.shoulderTilt)} />
       </dl>
       <dl className="times">
-        <MetricReadout label="Good posture" value={formatClock(view.session.goodMs)} />
-        <MetricReadout label="Poor posture" value={formatClock(poorMs(view.session))} />
-        <MetricReadout label="Longest episode" value={formatClock(view.session.longestPoorEpisodeMs)} />
         <MetricReadout label="Session" value={formatClock(wall)} />
+        <MetricReadout label="Poor posture" value={formatClock(poorMs(view.session))} />
       </dl>
-      {message && <p className="guidance">{message}</p>}
-      {view.baseline?.imagePrior?.adjusted && (
-        <p className="guidance">
-          The upright hold was more collapsed than the reference poses, so the baseline was shifted to those.
-        </p>
-      )}
-      {view.suggestRecalibration && view.recalibrationReason && (
-        <p className="guidance">{view.recalibrationReason}</p>
-      )}
       <div className="rail-actions">
         <button className="button secondary" type="button" onClick={onRecalibrate}>
-          Recalibrate side
+          Recalibrate front
         </button>
-        <PhotoButton onPhotos={onPhotos} />
         <button className="button secondary" type="button" onClick={onEndSession}>
           End session
         </button>
@@ -75,10 +60,21 @@ export function PostureStatus({ view, onRecalibrate, onEndSession, onPhotos, mes
   )
 }
 
+function distanceReadout(view: FrontEngineView): { label: string; value: string; detail?: string } {
+  const onScreen = view.settings.cameraOnScreen
+  const label = onScreen ? 'Screen distance' : 'Camera distance'
+  if (!view.scoreable || !view.features) return { label, value: '—' }
+  if (view.baseline?.knownDistanceCm != null && view.features.estimatedDistanceCm != null) {
+    const estimated = formatEstimatedDistance(view.features.estimatedDistanceCm, view.baseline.knownDistanceCm)
+    return { label, value: estimated.value, detail: estimated.detail }
+  }
+  return { label, value: formatRelativeDistance(view.features.relativeDistance) }
+}
+
 function toneFor(state: PostureState): 'good' | 'drift' | 'poor' | 'lost' {
   if (state === 'GOOD') return 'good'
   if (state === 'DRIFTING') return 'drift'
-  if (isPoorState(state)) return 'poor'
+  if (isFrontPoorState(state)) return 'poor'
   return 'lost'
 }
 

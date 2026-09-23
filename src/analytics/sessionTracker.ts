@@ -1,5 +1,6 @@
+import type { AnalysisMode } from '../config/postureConfig'
 import type { PostureState } from '../posture/postureTypes'
-import { isPoorState } from '../posture/postureTypes'
+import { isAnyPoorState } from '../posture/postureTypes'
 
 export interface PostureSample {
   t: number
@@ -11,6 +12,8 @@ export interface PostureSession {
   id: string
   startedAt: number
   endedAt?: number
+  /** Missing on sessions saved before front mode. Those are side sessions. */
+  mode?: AnalysisMode
   totalTrackedMs: number
   goodMs: number
   driftingMs: number
@@ -22,14 +25,38 @@ export interface PostureSession {
   longestPoorEpisodeMs: number
   sustainedEpisodeCount: number
   averageScore: number
+  tooCloseMs: number
+  headForwardMs: number
+  headDroppedMs: number
+  collapsedMs: number
+  leaningMs: number
+  shoulderAsymmetryMs: number
+  headTiltMs: number
+  multipleMs: number
+  /** Time-weighted mean of baselineFaceScale / currentFaceScale while tracking. */
+  averageDistanceRatio: number
+  /** Smallest distance ratio held for the sustained-distance window. */
+  closestDistanceRatio: number | null
   samples: PostureSample[]
 }
 
 export function poorMs(session: PostureSession): number {
+  if (session.mode === 'front') {
+    return (
+      session.tooCloseMs +
+      session.headForwardMs +
+      session.headDroppedMs +
+      session.collapsedMs +
+      session.leaningMs +
+      session.shoulderAsymmetryMs +
+      session.headTiltMs +
+      session.multipleMs
+    )
+  }
   return session.forwardHeadMs + session.torsoSlouchMs + session.lookingDownMs + session.combinedMs
 }
 
-export function createSession(now: number): PostureSession {
+export function createSession(now: number, mode: AnalysisMode = 'side'): PostureSession {
   const id =
     typeof crypto !== 'undefined' && 'randomUUID' in crypto
       ? crypto.randomUUID()
@@ -37,6 +64,7 @@ export function createSession(now: number): PostureSession {
   return {
     id,
     startedAt: now,
+    mode,
     totalTrackedMs: 0,
     goodMs: 0,
     driftingMs: 0,
@@ -48,6 +76,16 @@ export function createSession(now: number): PostureSession {
     longestPoorEpisodeMs: 0,
     sustainedEpisodeCount: 0,
     averageScore: 0,
+    tooCloseMs: 0,
+    headForwardMs: 0,
+    headDroppedMs: 0,
+    collapsedMs: 0,
+    leaningMs: 0,
+    shoulderAsymmetryMs: 0,
+    headTiltMs: 0,
+    multipleMs: 0,
+    averageDistanceRatio: 0,
+    closestDistanceRatio: null,
     samples: [],
   }
 }
@@ -66,10 +104,15 @@ export class SessionTracker {
   private lastPhase: PostureState = 'UNKNOWN'
   private lastScore: number | null = null
   private lastTrackingGood = false
+  private lastDistance: number | null = null
   private scoreSum = 0
   private scoreWeight = 0
   private episodeMs = 0
   private lastSampleAt = Number.NEGATIVE_INFINITY
+  private distanceSum = 0
+  private distanceWeight = 0
+  private closeCandidate: number | null = null
+  private closeSince: number | null = null
 
   constructor(
     session: PostureSession | null,
@@ -79,6 +122,8 @@ export class SessionTracker {
     if (session) {
       this.scoreWeight = session.totalTrackedMs
       this.scoreSum = session.averageScore * session.totalTrackedMs
+      this.distanceWeight = session.totalTrackedMs
+      this.distanceSum = (session.averageDistanceRatio ?? 0) * session.totalTrackedMs
       this.lastSampleAt = session.samples.at(-1)?.t ?? Number.NEGATIVE_INFINITY
     }
   }
@@ -104,16 +149,17 @@ export class SessionTracker {
     score: number | null,
     trackingGood: boolean,
     crossedSustained: boolean,
+    distanceRatio?: number | null,
   ): void {
     if (this.session.endedAt != null) return
     if (this.lastAt == null) {
-      this.bump(now, phase, score, trackingGood)
+      this.bump(now, phase, score, trackingGood, distanceRatio)
       if (crossedSustained) this.session.sustainedEpisodeCount += 1
       return
     }
     const dt = now - this.lastAt
     if (dt < 0 || dt > this.maxFrameGapMs) {
-      this.bump(now, phase, score, trackingGood)
+      this.bump(now, phase, score, trackingGood, distanceRatio)
       if (crossedSustained) this.session.sustainedEpisodeCount += 1
       return
     }
@@ -125,7 +171,7 @@ export class SessionTracker {
         }
       } else {
         addTrackedTime(this.session, this.lastPhase, dt)
-        if (isPoorState(this.lastPhase)) {
+        if (isAnyPoorState(this.lastPhase)) {
           this.episodeMs += dt
           this.session.longestPoorEpisodeMs = Math.max(this.session.longestPoorEpisodeMs, this.episodeMs)
         } else if (this.lastPhase === 'GOOD' || this.lastPhase === 'UNKNOWN') {
@@ -136,10 +182,30 @@ export class SessionTracker {
           this.scoreWeight += dt
           this.session.averageScore = this.scoreWeight > 0 ? this.scoreSum / this.scoreWeight : 0
         }
+        this.noteDistance(now, dt, this.lastDistance)
       }
     }
     if (crossedSustained) this.session.sustainedEpisodeCount += 1
-    this.bump(now, phase, score, trackingGood)
+    this.bump(now, phase, score, trackingGood, distanceRatio)
+  }
+
+  private noteDistance(now: number, dt: number, distanceRatio?: number | null): void {
+    if (distanceRatio == null || !Number.isFinite(distanceRatio) || !(dt > 0)) return
+    this.distanceSum += distanceRatio * dt
+    this.distanceWeight += dt
+    this.session.averageDistanceRatio = this.distanceWeight > 0 ? this.distanceSum / this.distanceWeight : 0
+    const sustainMs = 1500
+    if (this.closeCandidate == null || distanceRatio <= this.closeCandidate + 0.015) {
+      if (this.closeCandidate == null || this.closeSince == null) this.closeSince = now - dt
+      this.closeCandidate = this.closeCandidate == null ? distanceRatio : Math.min(this.closeCandidate, distanceRatio)
+      if (this.closeSince != null && now - this.closeSince >= sustainMs) {
+        const previous = this.session.closestDistanceRatio
+        this.session.closestDistanceRatio = previous == null ? this.closeCandidate : Math.min(previous, this.closeCandidate)
+      }
+      return
+    }
+    this.closeCandidate = distanceRatio
+    this.closeSince = now
   }
 
   noteSample(now: number, score: number, state: PostureState, intervalMs: number): void {
@@ -149,11 +215,18 @@ export class SessionTracker {
     if (this.session.samples.length > 2000) this.session.samples.shift()
   }
 
-  private bump(now: number, phase: PostureState, score: number | null, trackingGood: boolean): void {
+  private bump(
+    now: number,
+    phase: PostureState,
+    score: number | null,
+    trackingGood: boolean,
+    distanceRatio?: number | null,
+  ): void {
     this.lastAt = now
     this.lastPhase = phase
     this.lastScore = score
     this.lastTrackingGood = trackingGood
+    this.lastDistance = distanceRatio ?? null
   }
 }
 
@@ -177,6 +250,30 @@ function addTrackedTime(session: PostureSession, phase: PostureState, dt: number
       break
     case 'FORWARD_HEAD_AND_SLOUCH':
       session.combinedMs += dt
+      break
+    case 'TOO_CLOSE':
+      session.tooCloseMs += dt
+      break
+    case 'HEAD_FORWARD':
+      session.headForwardMs += dt
+      break
+    case 'HEAD_DROPPED':
+      session.headDroppedMs += dt
+      break
+    case 'COLLAPSED':
+      session.collapsedMs += dt
+      break
+    case 'LEANING_SIDEWAYS':
+      session.leaningMs += dt
+      break
+    case 'SHOULDER_ASYMMETRY':
+      session.shoulderAsymmetryMs += dt
+      break
+    case 'HEAD_TILT':
+      session.headTiltMs += dt
+      break
+    case 'MULTIPLE':
+      session.multipleMs += dt
       break
     default:
       session.totalTrackedMs -= dt
