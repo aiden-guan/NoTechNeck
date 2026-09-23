@@ -7,7 +7,7 @@ const LABELS: Record<PostureState, string> = {
   LOOKING_DOWN: 'Looking down',
   TORSO_SLOUCH: 'Torso slouch',
   FORWARD_HEAD_AND_SLOUCH: 'Head and torso',
-  TOO_CLOSE: 'Too close',
+  TOO_CLOSE: 'Leaning forward',
   HEAD_FORWARD: 'Chin forward',
   HEAD_DROPPED: 'Chin down',
   LEANING_SIDEWAYS: 'Side lean',

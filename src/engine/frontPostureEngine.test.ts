@@ -169,6 +169,19 @@ describe('front posture engine', () => {
     expect(view.posture === 'DRIFTING' || view.posture === 'TOO_CLOSE').toBe(true)
   })
 
+  it('names a moderate lean toward the screen from the head, once the shoulders come in', () => {
+    const monitor = engine()
+    const { t } = calibrate(monitor)
+    const leaned = frontObserve({ faceScale: 0.22 * 1.12, shoulderScale: 0.55 * 1.06 })
+    expect(monitor.ingest(leaned, t + 100).posture).toBe('GOOD')
+    const view = monitor.ingest(leaned, t + 6000)
+    expect(view.posture).toBe('TOO_CLOSE')
+    expect(view.score ?? 100).toBeLessThan(85)
+    expect(view.alert).toBeNull()
+    const alerted = monitor.ingest(leaned, t + 8100)
+    expect(alerted.alert?.message).toMatch(/leaning toward/i)
+  })
+
   it('classifies head-only advance after it persists', () => {
     const monitor = engine()
     const { t } = calibrate(monitor)

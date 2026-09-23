@@ -3,7 +3,9 @@ import type { PostureState } from './postureTypes'
 export function frontAlertCopy(state: PostureState, cameraOnScreen: boolean): string {
   switch (state) {
     case 'TOO_CLOSE':
-      return cameraOnScreen ? "You're moving closer to the screen." : "You're moving closer to the camera."
+      return cameraOnScreen
+        ? "You've been leaning toward the screen."
+        : "You've been leaning toward the camera."
     case 'HEAD_FORWARD':
       return 'Your chin has been moving toward the screen.'
     case 'HEAD_DROPPED':

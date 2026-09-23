@@ -70,9 +70,38 @@ function active(value: number, enter: number, latched: boolean, exitRatio: numbe
 }
 
 /**
+ * Shoulder growth that counts as the torso coming forward with the head.
+ * Below this, a larger face is chin translation, not a lean toward the screen.
+ */
+const SHOULDER_LEAN_CONFIRM = 0.75
+
+/**
+ * Head-vs-shoulder growth, relative to the chin-forward threshold, still
+ * explained by the head traveling farther than the shoulders in a lean.
+ */
+const ADVANCE_BEYOND_LEAN = 1.6
+
+/**
+ * Toward-screen lean. Shoulder scale alone misses a hinge at the hips, because
+ * the head covers more of the distance to the camera. Once the shoulders have
+ * moved in enough to show the torso came along, the lean is the head's approach.
+ * If the shoulders stayed put, this stays small so a chin jut is not also a lean.
+ */
+function towardScreenLean(
+  deviation: FrontDeviation,
+  distanceDrift: number,
+): number {
+  const faceIn = Math.max(0, deviation.faceCloseness)
+  const bodyIn = deviation.bodyCloseness == null ? null : Math.max(0, deviation.bodyCloseness)
+  if (bodyIn == null) return faceIn
+  const shouldersCameIn = bodyIn >= distanceDrift * SHOULDER_LEAN_CONFIRM
+  return shouldersCameIn ? Math.max(bodyIn, faceIn) : bodyIn
+}
+
+/**
  * Baseline-relative front rules.
- * Too-close uses shoulder scale when the torso is visible, so a head-only
- * advance is not also labeled as the whole body moving toward the camera.
+ * Leaning forward uses how far the head approached the camera once the
+ * shoulders have come in with it. A head-only advance stays chin-forward.
  * Collapse requires the composite index; pitch alone is head drop.
  */
 export function classifyFront(
@@ -84,7 +113,7 @@ export function classifyFront(
     return { severity: 'none', kind: null, instant: 'UNKNOWN', latch, scoreable: false }
   }
   const exit = config.exitRatio
-  const distanceSignal = Math.max(0, deviation.bodyCloseness ?? deviation.faceCloseness)
+  const distanceSignal = towardScreenLean(deviation, config.distanceDrift)
   const advance = Math.max(0, deviation.headAdvance ?? 0)
   const collapse = Math.max(0, deviation.collapse ?? 0)
   const pitch = Math.max(0, deviation.pitch ?? 0)
@@ -96,8 +125,11 @@ export function classifyFront(
     deviation.bodyCloseness != null || deviation.faceCloseness != null
       ? active(distanceSignal, config.distancePoor, latch.distancePoor, exit)
       : false
+  // A hip hinge already makes the face grow a bit more than the shoulders.
+  // Count chin-forward on top of that lean only when the extra growth is clear.
+  const advanceEnter = distancePoor ? config.headAdvancePoor * ADVANCE_BEYOND_LEAN : config.headAdvancePoor
   const advancePoor =
-    deviation.headAdvance != null ? active(advance, config.headAdvancePoor, latch.advancePoor, exit) : false
+    deviation.headAdvance != null ? active(advance, advanceEnter, latch.advancePoor, exit) : false
   const collapsePoor =
     deviation.collapse != null ? active(collapse, config.collapsePoor, latch.collapsePoor, exit) : false
   const pitchPoor =

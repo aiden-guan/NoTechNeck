@@ -87,8 +87,9 @@ export interface FrontPostureConfig {
 /**
  * Front-camera thresholds. Distances are ratios to the personal baseline.
  * Angles are degrees of change from that baseline, not from a universal zero.
- * Enter points sit a step below a comfortable sitting range so a moderate,
- * sustained drift is named instead of waiting for a large slump.
+ * Toward-screen enter points sit under a moderate desk lean. The head covers
+ * more of that lean than the shoulders, so distance is scored from the head
+ * once the shoulders confirm the torso came along.
  */
 export const FRONT_POSTURE_CONFIG: FrontPostureConfig = {
   ...SHARED_TIMING_CONFIG,
@@ -110,10 +111,10 @@ export const FRONT_POSTURE_CONFIG: FrontPostureConfig = {
   distanceSmoothingAlpha: 0.16,
   staleFaceMs: 450,
   stalePoseMs: 550,
-  distanceDrift: 0.065,
-  distancePoor: 0.14,
-  headAdvanceDrift: 0.04,
-  headAdvancePoor: 0.08,
+  distanceDrift: 0.045,
+  distancePoor: 0.09,
+  headAdvanceDrift: 0.03,
+  headAdvancePoor: 0.055,
   pitchDrift: 4.5,
   pitchPoor: 9,
   rollDrift: 5.5,
@@ -135,26 +136,26 @@ export const FRONT_POSTURE_CONFIG: FrontPostureConfig = {
   lateralDeadzone: 0.015,
   shoulderDeadzone: 1,
   collapseDeadzone: 0.15,
-  distanceScale: 0.22,
-  headAdvanceScale: 0.14,
+  distanceScale: 0.13,
+  headAdvanceScale: 0.1,
   pitchScale: 17,
   rollScale: 16,
   lateralScale: 0.17,
   shoulderScaleScore: 13,
   collapseScale: 1.25,
-  weightDistance: 0.14,
-  weightHeadAdvance: 0.28,
-  weightPitch: 0.14,
-  weightCollapse: 0.24,
-  weightLateral: 0.1,
-  weightShoulder: 0.06,
-  weightRoll: 0.04,
+  weightDistance: 0.24,
+  weightHeadAdvance: 0.3,
+  weightPitch: 0.12,
+  weightCollapse: 0.18,
+  weightLateral: 0.08,
+  weightShoulder: 0.05,
+  weightRoll: 0.03,
   distanceSustainMs: 1500,
 }
 
 export const FRONT_DATASET_LABELS: { id: FrontDatasetLabel; label: string }[] = [
   { id: 'upright', label: 'Upright' },
-  { id: 'too_close', label: 'Too close' },
+  { id: 'too_close', label: 'Leaning forward' },
   { id: 'head_forward', label: 'Chin forward' },
   { id: 'collapsed', label: 'Slouching' },
   { id: 'side_lean', label: 'Side lean' },

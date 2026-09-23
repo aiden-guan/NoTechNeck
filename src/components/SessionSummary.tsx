@@ -28,7 +28,7 @@ export function SessionSummary({ session, history, onNewSession }: SessionSummar
         {session.mode === 'front' ? (
           <>
             <div className="metric">
-              <dt>Too close</dt>
+              <dt>Leaning forward</dt>
               <dd>{formatClock(session.tooCloseMs)}</dd>
             </div>
             <div className="metric">

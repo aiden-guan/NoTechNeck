@@ -1,5 +1,31 @@
 # Changelog
 
+## 1.1.1 — 2026-09-23
+
+### Summary
+
+Leaning toward the screen is scored from how far the head approached the camera, once the shoulders show the torso came along. A moderate desk lean is named sooner, and the live state reads “Leaning forward.”
+
+### Architectural & Functional Highlights
+
+| Component / Layer | Change | Impact |
+| :--- | :--- | :--- |
+| **Front classifier** | Toward-screen distance uses head approach after a shoulder confirmation | A hip hinge is no longer under-read from shoulder size alone |
+| **Forward thresholds** | Distance poor at 9% closer; chin-forward poor at 5.5% extra face growth | A sustained moderate lean crosses into a poor state |
+| **Score** | Distance and head-advance weigh more, on a shorter scale | The meter drops when the lean is named |
+
+### Detailed Changes
+
+#### Changed / Refactored
+
+- **Leaning forward**: The former “Too close” state. Alert copy and the session total use the same name.
+- **Chin forward**: Still the label when the face grows and the shoulders stay put. A lean does not also become chin-forward unless the head outpaces the shoulders by a clear margin.
+- **Side analysis**: Thresholds unchanged.
+
+### Verification Proof
+
+- `npm test` — 72 tests passed, including a moderate toward-screen lean that becomes Leaning forward after the poor-posture delay, while a head-only advance stays Chin forward.
+
 ## 1.1.0 — 2026-09-22
 
 ### Summary
