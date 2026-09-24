@@ -33,7 +33,7 @@ export function frontPostureScore(deviation: FrontDeviation, config: ScoreConfig
   const penalty =
     ramp(distanceSignal, config.distanceDeadzone, config.distanceScale) * config.weightDistance +
     ramp(deviation.headAdvance ?? 0, config.headAdvanceDeadzone, config.headAdvanceScale) * config.weightHeadAdvance +
-    ramp(deviation.pitch ?? 0, config.pitchDeadzone, config.pitchScale) * config.weightPitch +
+    ramp(deviation.neckFlexion ?? deviation.pitch ?? 0, config.pitchDeadzone, config.pitchScale) * config.weightPitch +
     ramp(deviation.collapse ?? 0, config.collapseDeadzone, config.collapseScale) * config.weightCollapse +
     ramp(Math.abs(deviation.lateral ?? 0), config.lateralDeadzone, config.lateralScale) * config.weightLateral +
     ramp(Math.abs(deviation.shoulderTilt ?? 0), config.shoulderDeadzone, config.shoulderScaleScore) *

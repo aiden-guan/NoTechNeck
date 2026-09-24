@@ -23,6 +23,10 @@ export interface FrontMeasures {
   shoulderTilt: number | null
   chinShoulderGap: number | null
   headVerticalPosition: number | null
+  /** Eye-line-relative nose/chin drop, in degrees. Shoulder-independent. */
+  landmarkFlexion: number | null
+  /** Nose depth ahead of the eyes, in eye-widths. Null without landmark depth. */
+  noseLead: number | null
   faceCenterY: number
   eyeAspect: number | null
   faceConfidence: number
@@ -67,6 +71,9 @@ export interface FrontBaseline {
   chinShoulderGap: number
   shoulderTilt: number
   faceCenterY: number
+  /** Absent on baselines saved before neck-flexion tracking. */
+  landmarkFlexion?: number
+  noseLead?: number
   /** User-measured eye-to-screen (or camera) distance at calibration. Centimeters. */
   knownDistanceCm?: number
   variability: FrontFeatureVariability
@@ -102,6 +109,8 @@ export interface FrontErgonomicFeatures {
   shoulderTilt: number | null
   chinShoulderGap: number | null
   headVerticalPosition: number | null
+  landmarkFlexion: number | null
+  noseLead: number | null
   collapseIndex: number | null
   trackingConfidence: number
   faceConfidence: number
@@ -118,6 +127,14 @@ export interface FrontDeviation {
   headAdvance: number | null
   /** Positive when the head is rotated further down than baseline. */
   pitch: number | null
+  /**
+   * Positive when the head is bent down past baseline.
+   * Blends matrix pitch with the eye-line nose/chin drop so a nod still
+   * counts when the shoulders move or the matrix is quiet.
+   */
+  neckFlexion: number | null
+  /** Positive when the nose leads the eyes toward the camera more than baseline. */
+  noseLead: number | null
   yaw: number | null
   roll: number | null
   lateral: number | null
@@ -141,6 +158,8 @@ export interface FrontDatasetRow {
   shoulderTilt: number | null
   chinShoulderGap: number | null
   headVerticalPosition: number | null
+  landmarkFlexion: number | null
+  noseLead: number | null
   trackingConfidence: number
   label: FrontDatasetLabel | ''
   faceCenterX?: number

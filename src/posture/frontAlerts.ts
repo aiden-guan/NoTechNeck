@@ -9,7 +9,7 @@ export function frontAlertCopy(state: PostureState, cameraOnScreen: boolean): st
     case 'HEAD_FORWARD':
       return 'Your chin has been moving toward the screen.'
     case 'HEAD_DROPPED':
-      return "You've been tucking your chin down."
+      return "You've been bending your head down."
     case 'COLLAPSED':
       return "You've been slouching from your calibrated posture."
     case 'LEANING_SIDEWAYS':

@@ -77,11 +77,11 @@ describe('classifier', () => {
         .kind,
     ).toBe('FORWARD_HEAD')
     expect(
-      classifyInstant(deviation({ forwardHead: 0.01, neckAngle: 1, torsoAngle: 14 }), emptyLatch(), POSTURE_CONFIG)
+      classifyInstant(deviation({ forwardHead: 0.01, neckAngle: 1, torsoAngle: 20 }), emptyLatch(), POSTURE_CONFIG)
         .kind,
     ).toBe('TORSO_SLOUCH')
     expect(
-      classifyInstant(deviation({ forwardHead: 0.2, neckAngle: 16, torsoAngle: 14 }), emptyLatch(), POSTURE_CONFIG)
+      classifyInstant(deviation({ forwardHead: 0.2, neckAngle: 16, torsoAngle: 20 }), emptyLatch(), POSTURE_CONFIG)
         .kind,
     ).toBe('FORWARD_HEAD_AND_SLOUCH')
     expect(

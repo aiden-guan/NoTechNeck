@@ -100,9 +100,9 @@ function towardScreenLean(
 
 /**
  * Baseline-relative front rules.
- * Leaning forward uses how far the head approached the camera once the
- * shoulders have come in with it. A head-only advance stays chin-forward.
- * Collapse requires the composite index; pitch alone is head drop.
+ * Bending the head down is the primary tech-neck signal, from pitch plus the
+ * eye-line nose/chin drop. Chin-forward is next. Shoulder tilt is only named
+ * when the head is still at baseline, and it does not turn a nod into "a few things".
  */
 export function classifyFront(
   deviation: FrontDeviation,
@@ -116,7 +116,8 @@ export function classifyFront(
   const distanceSignal = towardScreenLean(deviation, config.distanceDrift)
   const advance = Math.max(0, deviation.headAdvance ?? 0)
   const collapse = Math.max(0, deviation.collapse ?? 0)
-  const pitch = Math.max(0, deviation.pitch ?? 0)
+  const flexion = Math.max(0, deviation.neckFlexion ?? deviation.pitch ?? 0)
+  const flexionKnown = deviation.neckFlexion != null || deviation.pitch != null
   const lateral = Math.abs(deviation.lateral ?? 0)
   const shoulder = Math.abs(deviation.shoulderTilt ?? 0)
   const roll = Math.abs(deviation.roll ?? 0)
@@ -130,10 +131,11 @@ export function classifyFront(
   const advanceEnter = distancePoor ? config.headAdvancePoor * ADVANCE_BEYOND_LEAN : config.headAdvancePoor
   const advancePoor =
     deviation.headAdvance != null ? active(advance, advanceEnter, latch.advancePoor, exit) : false
+  const pitchPoor = flexionKnown ? active(flexion, config.pitchPoor, latch.pitchPoor, exit) : false
   const collapsePoor =
-    deviation.collapse != null ? active(collapse, config.collapsePoor, latch.collapsePoor, exit) : false
-  const pitchPoor =
-    !collapsePoor && deviation.pitch != null ? active(pitch, config.pitchPoor, latch.pitchPoor, exit) : false
+    !pitchPoor && deviation.collapse != null
+      ? active(collapse, config.collapsePoor, latch.collapsePoor, exit)
+      : false
   const lateralPoor =
     deviation.lateral != null ? active(lateral, config.lateralPoor, latch.lateralPoor, exit) : false
   const shoulderPoor =
@@ -153,8 +155,7 @@ export function classifyFront(
     collapsePoor ||
     (deviation.collapse != null && active(collapse, config.collapseDrift, latch.collapseMild, exit))
   const pitchMild =
-    pitchPoor ||
-    (!collapsePoor && deviation.pitch != null && active(pitch, config.pitchDrift, latch.pitchMild, exit))
+    pitchPoor || (flexionKnown && active(flexion, config.pitchDrift, latch.pitchMild, exit))
   const lateralMild =
     lateralPoor || (deviation.lateral != null && active(lateral, config.lateralDrift, latch.lateralMild, exit))
   const shoulderMild =
@@ -181,8 +182,16 @@ export function classifyFront(
     rollMild,
   }
 
-  const poor = poorKinds({ distancePoor, advancePoor, collapsePoor, pitchPoor, lateralPoor, shoulderPoor, rollPoor })
-  const mild = poorKinds({
+  const poor = chooseKind({
+    distancePoor,
+    advancePoor,
+    collapsePoor,
+    pitchPoor,
+    lateralPoor,
+    shoulderPoor,
+    rollPoor,
+  })
+  const mild = chooseKind({
     distancePoor: distanceMild,
     advancePoor: advanceMild,
     collapsePoor: collapseMild,
@@ -191,13 +200,13 @@ export function classifyFront(
     shoulderPoor: shoulderMild,
     rollPoor: rollMild,
   })
-  const kind = poor.length >= 2 ? 'MULTIPLE' : (poor[0] ?? (mild.length >= 2 ? 'MULTIPLE' : (mild[0] ?? null)))
-  const severity = poor.length > 0 ? 'poor' : kind ? 'mild' : 'none'
+  const kind = poor ?? mild
+  const severity = poor ? 'poor' : kind ? 'mild' : 'none'
   const instant = severity === 'poor' && kind ? kind : 'GOOD'
   return { severity, kind, instant, latch: next, scoreable: true }
 }
 
-function poorKinds(flags: {
+function chooseKind(flags: {
   distancePoor: boolean
   advancePoor: boolean
   collapsePoor: boolean
@@ -205,14 +214,15 @@ function poorKinds(flags: {
   lateralPoor: boolean
   shoulderPoor: boolean
   rollPoor: boolean
-}): FrontPoorKind[] {
-  const kinds: FrontPoorKind[] = []
-  if (flags.distancePoor) kinds.push('TOO_CLOSE')
-  if (flags.advancePoor) kinds.push('HEAD_FORWARD')
-  if (flags.collapsePoor) kinds.push('COLLAPSED')
-  else if (flags.pitchPoor) kinds.push('HEAD_DROPPED')
-  if (flags.lateralPoor) kinds.push('LEANING_SIDEWAYS')
-  if (flags.shoulderPoor) kinds.push('SHOULDER_ASYMMETRY')
-  if (flags.rollPoor) kinds.push('HEAD_TILT')
-  return kinds
+}): FrontPoorKind | null {
+  if (flags.pitchPoor) return 'HEAD_DROPPED'
+  if (flags.advancePoor) return 'HEAD_FORWARD'
+  const rest: FrontPoorKind[] = []
+  if (flags.distancePoor) rest.push('TOO_CLOSE')
+  if (flags.collapsePoor) rest.push('COLLAPSED')
+  if (flags.lateralPoor) rest.push('LEANING_SIDEWAYS')
+  if (flags.shoulderPoor) rest.push('SHOULDER_ASYMMETRY')
+  if (flags.rollPoor) rest.push('HEAD_TILT')
+  if (rest.length >= 2) return 'MULTIPLE'
+  return rest[0] ?? null
 }

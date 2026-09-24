@@ -39,6 +39,8 @@ export function buildFrontBaseline(
   const chin = median(numbers(measures, 'chinShoulderGap'))
   const vertical = median(numbers(measures, 'headVerticalPosition'))
   const faceCenterY = median(measures.map((sample) => sample.faceCenterY))
+  const landmarkFlexion = median(numbers(measures, 'landmarkFlexion'))
+  const noseLead = median(numbers(measures, 'noseLead'))
   const ghost = medianGhost(kept.map((sample) => sample.ghost))
   if (
     ![faceScale, shoulderScale, headPitch, headYaw, headRoll, lateral, tilt, chin, vertical, faceCenterY].every(
@@ -63,6 +65,8 @@ export function buildFrontBaseline(
     chinShoulderGap: chin,
     shoulderTilt: tilt,
     faceCenterY,
+    ...(Number.isFinite(landmarkFlexion) ? { landmarkFlexion } : {}),
+    ...(Number.isFinite(noseLead) ? { noseLead } : {}),
     variability: {
       faceScale: safeMad(measures.map((sample) => sample.faceScale)),
       shoulderScale: safeMad(numbers(measures, 'shoulderScale')),
@@ -92,7 +96,15 @@ function safeMad(values: number[]): number {
   return Number.isFinite(value) ? value : 0
 }
 
-const OUTLIER_KEYS = ['faceScale', 'shoulderScale', 'headPitch', 'headYaw', 'headLateralOffset', 'shoulderTilt'] as const
+const OUTLIER_KEYS = [
+  'faceScale',
+  'shoulderScale',
+  'headPitch',
+  'landmarkFlexion',
+  'headYaw',
+  'headLateralOffset',
+  'shoulderTilt',
+] as const
 
 function rejectOutliers(samples: readonly FrontCalibrationSample[], madK: number): FrontCalibrationSample[] {
   let kept = [...samples]

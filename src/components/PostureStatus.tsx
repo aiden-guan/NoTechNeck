@@ -42,10 +42,10 @@ export function PostureStatus({ view, onRecalibrate, onEndSession, onPhotos, mes
         </div>
       </div>
       <dl className="metrics">
-        <MetricReadout label="Forward head" value={formatTorsoPercent(deviation?.forwardHead)} detail="of torso" />
         <MetricReadout label="Neck angle" value={formatDegrees(deviation?.neckAngle)} />
+        <MetricReadout label="Head down" value={formatDegrees(deviation?.headPitch)} />
+        <MetricReadout label="Forward head" value={formatTorsoPercent(deviation?.forwardHead)} detail="of torso" />
         <MetricReadout label="Torso lean" value={formatDegrees(deviation?.torsoAngle)} />
-        <MetricReadout label="Gaze" value={formatDegrees(deviation?.headPitch)} />
       </dl>
       <dl className="times">
         <MetricReadout label="Good posture" value={formatClock(view.session.goodMs)} />

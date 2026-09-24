@@ -152,6 +152,59 @@ export function headAdvanceFromScales(faceScaleRatio: number, shoulderScaleRatio
   return faceScaleRatio / shoulderScaleRatio
 }
 
+/**
+ * How far the nose and chin sit below the eye line, in degrees.
+ * The eye line is the zero, so dropping the whole head in the frame does not
+ * change this, and neither do the shoulders. A nod down increases it.
+ */
+export function landmarkFlexionDeg(
+  face: Pick<FrontFace, 'leftEyeCenter' | 'rightEyeCenter' | 'nose' | 'chin'>,
+  videoWidth: number,
+  videoHeight: number,
+): number | null {
+  if (!(videoWidth > 0) || !(videoHeight > 0)) return null
+  const left = face.leftEyeCenter
+  const right = face.rightEyeCenter
+  const eyeDx = (right.x - left.x) * videoWidth
+  const eyeDy = (right.y - left.y) * videoHeight
+  const eyeSpan = Math.hypot(eyeDx, eyeDy)
+  if (!(eyeSpan > 1)) return null
+  const downX = -eyeDy / eyeSpan
+  const downY = eyeDx / eyeSpan
+  const midX = (left.x + right.x) / 2
+  const midY = (left.y + right.y) / 2
+  const along = (point: Point) =>
+    ((point.x - midX) * videoWidth) * downX + ((point.y - midY) * videoHeight) * downY
+  const noseAngle = toDegrees(Math.atan2(along(face.nose), eyeSpan))
+  const chinAngle = toDegrees(Math.atan2(along(face.chin), eyeSpan))
+  if (![noseAngle, chinAngle].every(Number.isFinite)) return null
+  return noseAngle * 0.65 + chinAngle * 0.35
+}
+
+/**
+ * How far the nose leads the eyes toward the camera, in eye-widths.
+ * Uses MediaPipe depth. Positive means the nose is closer than the eyes,
+ * which grows when the chin comes forward and does not use the shoulders.
+ * Null when the landmarks have no depth.
+ */
+export function noseLeadRatio(
+  face: Pick<FrontFace, 'leftEyeCenter' | 'rightEyeCenter' | 'nose'>,
+  videoWidth: number,
+  videoHeight: number,
+): number | null {
+  const noseZ = face.nose.z
+  const leftZ = face.leftEyeCenter.z
+  const rightZ = face.rightEyeCenter.z
+  if (noseZ == null || leftZ == null || rightZ == null) return null
+  if (![noseZ, leftZ, rightZ, videoWidth, videoHeight].every((value) => Number.isFinite(value))) return null
+  if (!(videoWidth > 0) || !(videoHeight > 0)) return null
+  const eyeDx = face.rightEyeCenter.x - face.leftEyeCenter.x
+  const eyeDy = (face.rightEyeCenter.y - face.leftEyeCenter.y) * (videoHeight / videoWidth)
+  const eyeSpan = Math.hypot(eyeDx, eyeDy)
+  if (!(eyeSpan > 1e-4)) return null
+  return ((leftZ + rightZ) / 2 - noseZ) / eyeSpan
+}
+
 interface SourceLandmark {
   x: number
   y: number

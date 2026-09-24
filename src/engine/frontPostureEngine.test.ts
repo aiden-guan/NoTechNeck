@@ -46,6 +46,8 @@ function frontObserve(options: {
   roll?: number
   faceShiftX?: number
   faceShiftY?: number
+  /** Extra drop of the nose and chin below the eyes, in normalized image y. */
+  nod?: number
   shoulderTiltDeg?: number
   visibility?: number
   faceMissing?: boolean
@@ -63,8 +65,8 @@ function frontObserve(options: {
     confidence: visibility,
     center: { x: cx, y: cy },
     forehead: { x: cx, y: cy - 0.08 },
-    chin: { x: cx, y: cy + 0.1 },
-    nose: { x: cx, y: cy + 0.02 },
+    chin: { x: cx, y: cy + 0.1 + (options.nod ?? 0) },
+    nose: { x: cx, y: cy + 0.02 + (options.nod ?? 0) },
     leftEyeOuter: { x: cx - half, y: cy },
     rightEyeOuter: { x: cx + half, y: cy },
     leftEyeInner: { x: cx - half + eyeW, y: cy },
@@ -206,12 +208,44 @@ describe('front posture engine', () => {
     expect(view.features?.collapseIndex ?? 0).toBeGreaterThan(1)
   })
 
-  it('classifies a raised shoulder as asymmetry', () => {
+  it('does not treat a moderate shoulder tilt as the posture problem', () => {
     const monitor = engine()
     const { t } = calibrate(monitor)
     const tilted = frontObserve({ shoulderTiltDeg: 10 })
     monitor.ingest(tilted, t + 100)
+    const view = monitor.ingest(tilted, t + 6000)
+    expect(view.posture).toBe('GOOD')
+    expect(view.score ?? 0).toBeGreaterThan(95)
+  })
+
+  it('still names a large shoulder tilt when the head stays level', () => {
+    const monitor = engine()
+    const { t } = calibrate(monitor)
+    const tilted = frontObserve({ shoulderTiltDeg: 20 })
+    monitor.ingest(tilted, t + 100)
     expect(monitor.ingest(tilted, t + 6000).posture).toBe('SHOULDER_ASYMMETRY')
+  })
+
+  it('names a downward nod from pitch even when the shoulders also tilt', () => {
+    const monitor = engine()
+    const { t } = calibrate(monitor)
+    const nodded = frontObserve({ pitch: 12, shoulderTiltDeg: 20 })
+    monitor.ingest(nodded, t + 100)
+    const view = monitor.ingest(nodded, t + 6000)
+    expect(view.posture).toBe('HEAD_DROPPED')
+    expect(view.deviation?.neckFlexion ?? 0).toBeGreaterThan(8)
+    expect(view.score ?? 100).toBeLessThan(75)
+  })
+
+  it('tracks a nod from the nose and chin dropping below the eyes, without shoulder motion', () => {
+    const monitor = engine()
+    const { t } = calibrate(monitor)
+    const nodded = frontObserve({ nod: 0.04, pitch: 0 })
+    monitor.ingest(nodded, t + 100)
+    const view = monitor.ingest(nodded, t + 6000)
+    expect(view.deviation?.neckFlexion ?? 0).toBeGreaterThan(7)
+    expect(view.posture).toBe('HEAD_DROPPED')
+    expect(view.deviation?.shoulderTilt ?? 0).toBeCloseTo(0, 1)
   })
 
   it('classifies a lateral head shift as a side lean', () => {

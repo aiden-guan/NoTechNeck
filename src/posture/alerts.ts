@@ -7,7 +7,7 @@ export function alertCopy(state: PostureState): string {
     case 'TORSO_SLOUCH':
       return "You've been slouching for a little while."
     case 'LOOKING_DOWN':
-      return 'Your gaze has been angled down for a while.'
+      return "You've been bending your head down."
     case 'FORWARD_HEAD_AND_SLOUCH':
       return 'Try returning to your calibrated posture.'
     default:

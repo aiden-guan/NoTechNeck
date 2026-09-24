@@ -40,6 +40,8 @@ export function deriveFrontFeatures(
     shoulderTilt: measures.shoulderTilt,
     chinShoulderGap: measures.chinShoulderGap,
     headVerticalPosition: measures.headVerticalPosition,
+    landmarkFlexion: measures.landmarkFlexion,
+    noseLead: measures.noseLead,
     collapseIndex: collapse,
     trackingConfidence: clamp01(confidence),
     faceConfidence: measures.faceConfidence,

@@ -36,6 +36,8 @@ export function FrontDebugPanel({ view, onRecord, onExport, onClear, onLandmarks
         <DebugStat label="Head advance" value={num(features?.headAdvanceRatio, 3)} />
         <DebugStat label="Yaw" value={formatDegrees(measures?.headYaw)} />
         <DebugStat label="Pitch" value={formatDegrees(measures?.headPitch)} detail={formatDegrees(deviation?.pitch)} />
+        <DebugStat label="Neck flexion" value={formatDegrees(deviation?.neckFlexion)} detail={formatDegrees(measures?.landmarkFlexion)} />
+        <DebugStat label="Nose lead" value={num(deviation?.noseLead, 3)} detail={num(measures?.noseLead, 3)} />
         <DebugStat label="Roll" value={formatDegrees(measures?.headRoll)} detail={formatDegrees(deviation?.roll)} />
         <DebugStat label="Lateral offset" value={num(deviation?.lateral, 3)} />
         <DebugStat label="Shoulder tilt" value={formatDegrees(deviation?.shoulderTilt)} />

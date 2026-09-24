@@ -28,16 +28,16 @@ export function SessionSummary({ session, history, onNewSession }: SessionSummar
         {session.mode === 'front' ? (
           <>
             <div className="metric">
-              <dt>Leaning forward</dt>
-              <dd>{formatClock(session.tooCloseMs)}</dd>
+              <dt>Head down</dt>
+              <dd>{formatClock(session.headDroppedMs)}</dd>
             </div>
             <div className="metric">
               <dt>Chin forward</dt>
               <dd>{formatClock(session.headForwardMs)}</dd>
             </div>
             <div className="metric">
-              <dt>Chin down</dt>
-              <dd>{formatClock(session.headDroppedMs)}</dd>
+              <dt>Leaning forward</dt>
+              <dd>{formatClock(session.tooCloseMs)}</dd>
             </div>
             <div className="metric">
               <dt>Slouching</dt>

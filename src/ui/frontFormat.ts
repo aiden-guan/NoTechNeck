@@ -32,12 +32,6 @@ export function formatHeadAdvance(ratio: number | null | undefined): string {
   return `${Math.abs(percent)}% back`
 }
 
-export function formatShoulderBalance(tiltDegrees: number | null | undefined): string {
-  if (tiltDegrees == null || !Number.isFinite(tiltDegrees)) return '—'
-  if (Math.abs(tiltDegrees) < 2.5) return 'Balanced'
-  return tiltDegrees > 0 ? 'Left higher' : 'Right higher'
-}
-
 export function formatDistanceRatio(ratio: number | null | undefined): string {
   if (ratio == null || !Number.isFinite(ratio) || ratio === 0) return '—'
   return formatRelativeDistance(ratio)

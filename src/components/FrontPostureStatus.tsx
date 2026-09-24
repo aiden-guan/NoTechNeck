@@ -4,12 +4,7 @@ import type { FrontEngineView } from '../engine/frontPostureEngine'
 import type { PostureState } from '../posture/postureTypes'
 import { isFrontPoorState } from '../posture/postureTypes'
 import { formatClock, formatDegrees, formatScore, postureLabel, trackingLabel } from '../ui/format'
-import {
-  formatEstimatedDistance,
-  formatHeadAdvance,
-  formatRelativeDistance,
-  formatShoulderBalance,
-} from '../ui/frontFormat'
+import { formatEstimatedDistance, formatHeadAdvance, formatRelativeDistance } from '../ui/frontFormat'
 import { MetricReadout } from './MetricReadout'
 
 interface FrontPostureStatusProps {
@@ -39,10 +34,13 @@ export function FrontPostureStatus({ view, onRecalibrate, onEndSession }: FrontP
         </div>
       </div>
       <dl className="metrics">
+        <MetricReadout
+          label="Head down"
+          value={formatDegrees(view.deviation?.neckFlexion ?? view.deviation?.pitch)}
+          detail="past baseline"
+        />
+        <MetricReadout label="Chin forward" value={formatHeadAdvance(view.features?.headAdvanceRatio)} />
         <MetricReadout label={distance.label} value={distance.value} detail={distance.detail} />
-        <MetricReadout label="Head position" value={formatHeadAdvance(view.features?.headAdvanceRatio)} />
-        <MetricReadout label="Head pitch" value={formatDegrees(view.deviation?.pitch)} />
-        <MetricReadout label="Shoulders" value={formatShoulderBalance(view.deviation?.shoulderTilt)} />
       </dl>
       <dl className="times">
         <MetricReadout label="Session" value={formatClock(wall)} />

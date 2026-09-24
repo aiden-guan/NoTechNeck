@@ -3,7 +3,9 @@ import {
   eulerFromFacialMatrix,
   eyeAspect,
   faceScaleOf,
+  landmarkFlexionDeg,
   landmarkYaw,
+  noseLeadRatio,
   shoulderScaleOf,
 } from '../cv/faceGeometry'
 import { inFrame } from '../cv/landmarkTypes'
@@ -65,6 +67,8 @@ export function measureFront(
     shoulderTilt: finiteOrNull(shoulderTilt),
     chinShoulderGap: finiteOrNull(chinShoulderGap),
     headVerticalPosition: finiteOrNull(headVerticalPosition),
+    landmarkFlexion: finiteOrNull(landmarkFlexionDeg(face, width, height)),
+    noseLead: finiteOrNull(noseLeadRatio(face, width, height)),
     faceCenterY: face.center.y,
     eyeAspect: Number.isFinite(aspect) ? aspect : null,
     faceConfidence: face.confidence,

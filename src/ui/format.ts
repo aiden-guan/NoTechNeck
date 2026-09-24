@@ -9,7 +9,7 @@ const LABELS: Record<PostureState, string> = {
   FORWARD_HEAD_AND_SLOUCH: 'Head and torso',
   TOO_CLOSE: 'Leaning forward',
   HEAD_FORWARD: 'Chin forward',
-  HEAD_DROPPED: 'Chin down',
+  HEAD_DROPPED: 'Head down',
   LEANING_SIDEWAYS: 'Side lean',
   SHOULDER_ASYMMETRY: 'Uneven shoulders',
   HEAD_TILT: 'Head tilted',

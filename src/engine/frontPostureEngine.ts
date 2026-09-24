@@ -418,6 +418,8 @@ export class FrontPostureEngine {
         shoulderTilt: value('tilt', measures.shoulderTilt),
         chinShoulderGap: value('chin', measures.chinShoulderGap),
         headVerticalPosition: value('vertical', measures.headVerticalPosition),
+        landmarkFlexion: value('flexion', measures.landmarkFlexion),
+        noseLead: value('noseLead', measures.noseLead),
         faceCenterY: this.measureSmoother.value('faceY', measures.faceCenterY, now),
         eyeAspect: value('ear', measures.eyeAspect),
       },
@@ -560,6 +562,8 @@ export class FrontPostureEngine {
       shoulderTilt: features.shoulderTilt,
       chinShoulderGap: features.chinShoulderGap,
       headVerticalPosition: features.headVerticalPosition,
+      landmarkFlexion: features.landmarkFlexion,
+      noseLead: features.noseLead,
       trackingConfidence: features.trackingConfidence,
       label: this.label,
     }

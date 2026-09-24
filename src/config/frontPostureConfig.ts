@@ -90,6 +90,9 @@ export interface FrontPostureConfig {
  * Toward-screen enter points sit under a moderate desk lean. The head covers
  * more of that lean than the shoulders, so distance is scored from the head
  * once the shoulders confirm the torso came along.
+ *
+ * Neck flexion (pitch plus the eye-line nose/chin drop) is the main score.
+ * Shoulder tilt is a weak, high-threshold aside.
  */
 export const FRONT_POSTURE_CONFIG: FrontPostureConfig = {
   ...SHARED_TIMING_CONFIG,
@@ -115,14 +118,14 @@ export const FRONT_POSTURE_CONFIG: FrontPostureConfig = {
   distancePoor: 0.09,
   headAdvanceDrift: 0.03,
   headAdvancePoor: 0.055,
-  pitchDrift: 4.5,
-  pitchPoor: 9,
+  pitchDrift: 3.5,
+  pitchPoor: 7,
   rollDrift: 5.5,
   rollPoor: 9.5,
   lateralDrift: 0.048,
   lateralPoor: 0.095,
-  shoulderTiltDrift: 3,
-  shoulderTiltPoor: 6.5,
+  shoulderTiltDrift: 12,
+  shoulderTiltPoor: 18,
   collapseDrift: 0.5,
   collapsePoor: 0.8,
   collapseGapScale: 0.06,
@@ -131,25 +134,25 @@ export const FRONT_POSTURE_CONFIG: FrontPostureConfig = {
   exitRatio: 0.55,
   distanceDeadzone: 0.02,
   headAdvanceDeadzone: 0.015,
-  pitchDeadzone: 1.5,
+  pitchDeadzone: 1,
   rollDeadzone: 1.5,
   lateralDeadzone: 0.015,
-  shoulderDeadzone: 1,
+  shoulderDeadzone: 3,
   collapseDeadzone: 0.15,
   distanceScale: 0.13,
   headAdvanceScale: 0.1,
-  pitchScale: 17,
+  pitchScale: 12,
   rollScale: 16,
   lateralScale: 0.17,
-  shoulderScaleScore: 13,
+  shoulderScaleScore: 24,
   collapseScale: 1.25,
   weightDistance: 0.24,
-  weightHeadAdvance: 0.3,
-  weightPitch: 0.12,
-  weightCollapse: 0.18,
-  weightLateral: 0.08,
-  weightShoulder: 0.05,
-  weightRoll: 0.03,
+  weightHeadAdvance: 0.22,
+  weightPitch: 0.32,
+  weightCollapse: 0.08,
+  weightLateral: 0.06,
+  weightShoulder: 0.02,
+  weightRoll: 0.06,
   distanceSustainMs: 1500,
 }
 
